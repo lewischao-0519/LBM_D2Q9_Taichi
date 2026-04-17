@@ -15,6 +15,24 @@ f_new = ti.field(ti.f32, shape=(9, cfg.NY, cfg.NX))
 rho_field = ti.field(ti.f32, shape=(cfg.NY, cfg.NX))
 ux_field  = ti.field(ti.f32, shape=(cfg.NY, cfg.NX))
 uy_field  = ti.field(ti.f32, shape=(cfg.NY, cfg.NX))
+# engine.py 
+
+# 建立一個零維向量場來儲存總受力 (只有一個元素，存放 [Fx, Fy])
+force_field = ti.Vector.field(2, dtype=ti.f32, shape=())
+
+@ti.kernel
+def compute_force_kernel(obstacle: ti.template()):
+    force_field[None] = [0.0, 0.0]
+    for y, x in ti.ndrange(cfg.NY, cfg.NX):
+        if obstacle[y, x] == 1:
+            for i in ti.static(range(9)):
+                nb_x = (x + cfg.CX[i]) % cfg.NX
+                nb_y = (y + cfg.CY[i]) % cfg.NY
+                if obstacle[nb_y, nb_x] == 0:
+                    # 動量交換公式
+                    f_in = f[i, nb_y, nb_x]
+                    f_out = f[cfg.OPP[i], y, x]
+                    force_field[None] += ti.Vector([cfg.CX[i], cfg.CY[i]]) * (f_in + f_out)
 
 
 @ti.kernel

@@ -26,6 +26,30 @@ class DomainManager:
 
     def add_rectangle(self, x_start, x_end, y_start, y_end):
         self._mask_np[y_start:y_end, x_start:x_end] = 1
+    
+        
+    def add_naca_airfoil(self, x_offset, y_offset, chord_length, t, angle_of_attack):
+        """
+        x_offset, y_offset: 翼弦前緣位置
+        chord_length: 翼弦長度
+        t: 最大厚度 (例如 0.12 代表 12%)
+        angle_of_attack: 攻角 (角度)
+        """
+        rad = np.radians(angle_of_attack)
+        for y, x in np.ndindex(self.ny, self.nx):
+            # 座標旋轉與平移
+            dx = (x - x_offset) * np.cos(rad) + (y - y_offset) * np.sin(rad)
+            dy = -(x - x_offset) * np.sin(rad) + (y - y_offset) * np.cos(rad)
+            
+            if 0 <= dx <= chord_length:
+                xc = dx / chord_length
+                # NACA 厚度公式
+                yt = 5 * t * chord_length * (
+                    0.2969 * np.sqrt(xc) - 0.1260 * xc - 
+                    0.3516 * xc**2 + 0.2843 * xc**3 - 0.1015 * xc**4
+                )
+                if abs(dy) <= yt:
+                    self._mask_np[y, x] = 1
 
     def clear_domain(self):
         self._mask_np.fill(0)
