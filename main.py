@@ -67,51 +67,47 @@ def main():
                 if step % 1000 == 0:
                     print(f"Current Progress: {step}/{cfg.MAX_STEPS}")
 
-# ... 前方的模擬與錄影代碼 ...
+    print("Simulation finished! Preparing scientific data...")
+    try:
+        if len(steps_log) > 0:
+            plt.clf() # 清除所有目前的繪圖內容
+            fig_data, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+            
+            # 繪製升力 Fy
+            ax1.plot(steps_log, lift_log, label='Lift (Fy)', color='blue', linewidth=1.5)
+            ax1.set_ylabel('Force (Lattice Units)')
+            ax1.set_title('Aerodynamic Force Analysis (Kármán Vortex Street)')
+            ax1.grid(True, linestyle='--', alpha=0.7)
+            ax1.legend()
 
-print("Simulation finished! Preparing scientific data...")
+            # 繪製阻力 Fx
+            ax2.plot(steps_log, drag_log, label='Drag (Fx)', color='red', linewidth=1.5)
+            ax2.set_xlabel('Time Steps')
+            ax2.set_ylabel('Force (Lattice Units)')
+            ax2.grid(True, linestyle='--', alpha=0.7)
+            ax2.legend()
 
-# 強制開啟一個全新的 Figure，避免受影片錄製影響
-try:
-    if len(steps_log) > 0:
-        plt.clf() # 清除所有目前的繪圖內容
-        fig_data, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-        
-        # 繪製升力 Fy
-        ax1.plot(steps_log, lift_log, label='Lift (Fy)', color='blue', linewidth=1.5)
-        ax1.set_ylabel('Force (Lattice Units)')
-        ax1.set_title('Aerodynamic Force Analysis (Kármán Vortex Street)')
-        ax1.grid(True, linestyle='--', alpha=0.7)
-        ax1.legend()
+            plt.tight_layout()
+            
+            # 儲存圖片
+            save_path = "/kaggle/working/force_analysis_plot.png"
+            plt.savefig(save_path, dpi=200)
+            print(f"✅ Scientific plot saved successfully to: {save_path}")
+            
+            # (選配) 將數據存成 CSV，這才是真正的「科學數據」
+            import pandas as pd
+            df = pd.DataFrame({
+                'step': steps_log,
+                'drag': drag_log,
+                'lift': lift_log
+            })
+            df.to_csv("/kaggle/working/force_data.csv", index=False)
+            print("✅ Data exported to force_data.csv")
+            
+        else:
+            print("❌ Error: No force data was recorded. Check your step % 20 condition.")
 
-        # 繪製阻力 Fx
-        ax2.plot(steps_log, drag_log, label='Drag (Fx)', color='red', linewidth=1.5)
-        ax2.set_xlabel('Time Steps')
-        ax2.set_ylabel('Force (Lattice Units)')
-        ax2.grid(True, linestyle='--', alpha=0.7)
-        ax2.legend()
+    except Exception as e:
+        print(f"❌ Failed to generate plot: {e}")
 
-        plt.tight_layout()
-        
-        # 儲存圖片
-        save_path = "/kaggle/working/force_analysis_plot.png"
-        plt.savefig(save_path, dpi=200)
-        print(f"✅ Scientific plot saved successfully to: {save_path}")
-        
-        # (選配) 將數據存成 CSV，這才是真正的「科學數據」
-        import pandas as pd
-        df = pd.DataFrame({
-            'step': steps_log,
-            'drag': drag_log,
-            'lift': lift_log
-        })
-        df.to_csv("/kaggle/working/force_data.csv", index=False)
-        print("✅ Data exported to force_data.csv")
-        
-    else:
-        print("❌ Error: No force data was recorded. Check your step % 20 condition.")
-
-except Exception as e:
-    print(f"❌ Failed to generate plot: {e}")
-
-    print("--- Process Complete ---")
+        print("--- Process Complete ---")
