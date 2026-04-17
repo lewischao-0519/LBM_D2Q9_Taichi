@@ -111,7 +111,7 @@ try:
     else:
         print("❌ Error: No force data was recorded. Check your step % 20 condition.")
 
-    except Exception as e:
-        print(f"❌ Failed to generate plot: {e}")
+except Exception as e:
+    print(f"❌ Failed to generate plot: {e}")
 
-        print("--- Process Complete ---")
+    print("--- Process Complete ---")
