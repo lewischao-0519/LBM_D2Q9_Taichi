@@ -23,7 +23,7 @@ def main():
     
     # 📝 修正：給予明確的數值而非佔位符
     # 參數：(x位置, y位置, 弦長, 厚度t, 攻角)
-    domain.add_naca_airfoil(x_offset=150, y_offset=300, chord_length=200, t=0.12, angle_of_attack=10.0)
+    domain.add_naca_airfoil(x_offset=150, y_offset=300, chord_length=300, t=0.12, angle_of_attack=-10.0)
     domain.upload()
     
     # --- 科學數據記錄器 ---
@@ -43,6 +43,10 @@ def main():
     with writer.saving(fig, "simulation_result.mp4", dpi=100):
         for step in range(cfg.MAX_STEPS):
             # A. 設定邊界擾動 (讓渦流更快產生)
+            # 在 for step in range(cfg.MAX_STEPS) 循環內
+            # 前 2000 步速度從 0 緩慢升到 U_MAX
+            current_u = cfg.U_MAX * min(1.0, step / 2000.0)
+            set_inlet_kernel(current_u, 0.0)
             perturb = 0.005 * np.sin(step * 0.1) if step < 1000 else 0.0
             set_inlet_kernel(cfg.U_MAX, perturb)
             
