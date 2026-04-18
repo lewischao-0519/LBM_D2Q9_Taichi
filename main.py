@@ -10,10 +10,12 @@ import matplotlib.animation as animation
 import config as cfg
 from config import init_constants
 from geometry import DomainManager
-from engine import (f, f_new, rho_field, ux_field, uy_field, force_field,
+from engine import (f, f_new, rho_field, ux_field, uy_field, 
+                    # 📝 刪除 force_field，改為匯入下面這四個新定義的名稱
+                    force_field_front, force_field_rear,
+                    compute_force_dual_kernel, 
                     init_fields, lbm_step_kernel, swap_fields,
-                    set_inlet_kernel, compute_macro_kernel, compute_force_kernel)
-
+                    set_inlet_kernel, compute_macro_kernel)
 def main():
     # 1. 初始化
     init_constants()
