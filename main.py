@@ -23,13 +23,14 @@ def main():
     
     # 📝 修正：給予明確的數值而非佔位符
     # 參數：(x位置, y位置, 弦長, 厚度t, 攻角)
-    domain.add_naca_airfoil(x_offset=150, y_offset=300, chord_length=300, t=0.12, angle_of_attack=-10.0)
+    domain.add_naca_airfoil(200, 400, 200, 0.12, -5.0)
+    domain.add_naca_airfoil(800, 350, 200, 0.12, -2.0)
     domain.upload()
     
     # --- 科學數據記錄器 ---
     steps_log = []
-    lift_log = []
-    drag_log = []
+    front_lift, front_drag = [], []
+    rear_lift, rear_drag = [], []
     
     # --- 影片錄製設定 ---
     fig, ax = plt.subplots(figsize=(10, 3))
@@ -56,12 +57,14 @@ def main():
             
             # C. 每 20 步記錄一次受力數據
             if step % 20 == 0:
-                compute_force_kernel(domain.obstacle)
-                force = force_field.to_numpy() # 從 GPU 拉回數值
+                compute_force_dual_kernel(domain.obstacle)
+                f_front = force_field_front.to_numpy()
+                f_rear = force_field_rear.to_numpy()
+                
                 steps_log.append(step)
-                drag_log.append(force[0])
-                lift_log.append(force[1])
-            
+                front_drag.append(f_front[0]); front_lift.append(f_front[1])
+                rear_drag.append(f_rear[0]); rear_lift.append(f_rear[1])
+                
             # D. 每 100 步擷取影片影格
             if step % 100 == 0:
                 compute_macro_kernel(domain.obstacle)
@@ -77,34 +80,28 @@ def main():
     
     try:
         if len(steps_log) > 0:
-            plt.clf() 
-            fig_data, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-            
-            ax1.plot(steps_log, lift_log, label='Lift (Fy)', color='blue', linewidth=1.5)
-            ax1.set_ylabel('Force (Lattice Units)')
-            ax1.set_title('Aerodynamic Force Analysis (NACA Airfoil)')
-            ax1.grid(True, linestyle='--', alpha=0.7)
-            ax1.legend()
+        # 創建一個 2x1 的佈局：上面看升力對比，下面看阻力對比
+        fig_data, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+        
+        # --- 上圖：升力 (Lift) 對比 ---
+        ax1.plot(steps_log, front_lift, label='Front Wing (Target)', color='blue', linewidth=1.5)
+        ax1.plot(steps_log, rear_lift, label='Rear Wing (Tandem)', color='cyan', linestyle='--', linewidth=1.5)
+        ax1.set_ylabel('Lift Force (Lattice Units)')
+        ax1.set_title('Tandem Wing Aerodynamic Performance Comparison')
+        ax1.grid(True, linestyle='--', alpha=0.6)
+        ax1.legend(loc='upper right')
 
-            ax2.plot(steps_log, drag_log, label='Drag (Fx)', color='red', linewidth=1.5)
-            ax2.set_xlabel('Time Steps')
-            ax2.set_ylabel('Force (Lattice Units)')
-            ax2.grid(True, linestyle='--', alpha=0.7)
-            ax2.legend()
+        # --- 下圖：阻力 (Drag) 對比 ---
+        ax2.plot(steps_log, front_drag, label='Front Wing Drag', color='red', linewidth=1.5)
+        ax2.plot(steps_log, rear_drag, label='Rear Wing Drag', color='orange', linestyle='--', linewidth=1.5)
+        ax2.set_xlabel('Time Steps')
+        ax2.set_ylabel('Drag Force (Lattice Units)')
+        ax2.grid(True, linestyle='--', alpha=0.6)
+        ax2.legend(loc='upper right')
 
-            plt.tight_layout()
-            
-            save_path = "force_analysis_plot.png"
-            plt.savefig(save_path, dpi=200)
-            print(f"📈 Scientific plot saved to: {save_path}")
-            
-            # 儲存 CSV
-            import pandas as pd
-            df = pd.DataFrame({'step': steps_log, 'drag': drag_log, 'lift': lift_log})
-            df.to_csv("force_data.csv", index=False)
-            print("📄 Data exported to force_data.csv")
-        else:
-            print("❌ Error: No force data was recorded.")
+        plt.tight_layout()
+        plt.savefig("/kaggle/working/tandem_force_comparison.png", dpi=250)
+        print("✅ 雙翼對比圖已儲存至: tandem_force_comparison.png")
 
     except Exception as e:
         print(f"❌ Failed to generate plot: {e}")
