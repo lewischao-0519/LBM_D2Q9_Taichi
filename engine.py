@@ -18,21 +18,39 @@ uy_field  = ti.field(ti.f32, shape=(cfg.NY, cfg.NX))
 # engine.py 
 
 # 建立一個零維向量場來儲存總受力 (只有一個元素，存放 [Fx, Fy])
-force_field = ti.Vector.field(2, dtype=ti.f32, shape=())
+# 在 engine.py 中新增或修改
+import taichi as ti
+
+# 準備兩個存放受力的場
+force_field_front = ti.Vector.field(2, dtype=ti.f32, shape=())
+force_field_rear = ti.Vector.field(2, dtype=ti.f32, shape=())
 
 @ti.kernel
-def compute_force_kernel(obstacle: ti.template()):
-    force_field[None] = [0.0, 0.0]
-    for y, x in ti.ndrange(cfg.NY, cfg.NX):
-        if obstacle[y, x] == 1:
-            for i in ti.static(range(9)):
-                nb_x = (x + cfg.CX[i]) % cfg.NX
-                nb_y = (y + cfg.CY[i]) % cfg.NY
-                if obstacle[nb_y, nb_x] == 0:
-                    # 動量交換公式
-                    f_in = f[i, nb_y, nb_x]
-                    f_out = f[cfg.OPP[i], y, x]
-                    force_field[None] += ti.Vector([cfg.CX[i], cfg.CY[i]]) * (f_in + f_out)
+def compute_force_dual_kernel(obstacle: ti.template()):
+    # 每次計算前清零
+    force_field_front[None] = [0.0, 0.0]
+    force_field_rear[None] = [0.0, 0.0]
+    
+    for i, j in ti.ndrange(cfg.NX, cfg.NY):
+        # 只有當該點是障礙物時才計算
+        obj_type = obstacle[i, j]
+        if obj_type > 0:
+            for k in range(9):
+                # 動量交換法 (Momentum Exchange Method)
+                ip = i + cfg.DX[k]
+                jp = j + cfg.DY[k]
+                if 0 <= ip < cfg.NX and 0 <= jp < cfg.NY:
+                    if obstacle[ip, jp] == 0: # 鄰居是流體
+                        # 這裡使用 D2Q9 的反向索引 (k_inv)
+                        k_inv = cfg.INV[k]
+                        momentum = cfg.W[k] * (f[i, j][k] + f_new[ip, jp][k_inv])
+                        
+                        force_vec = [momentum * cfg.DX[k], momentum * cfg.DY[k]]
+                        
+                        if obj_type == 1:
+                            force_field_front[None] += force_vec
+                        elif obj_type == 2:
+                            force_field_rear[None] += force_vec
 
 
 @ti.kernel
