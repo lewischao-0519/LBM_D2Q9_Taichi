@@ -28,7 +28,7 @@ class DomainManager:
         self._mask_np[y_start:y_end, x_start:x_end] = 1
     
         
-    def add_naca_airfoil(self, x_offset, y_offset, chord_length, t, angle_of_attack):
+    def add_naca_airfoil(self, x_offset, y_offset, chord_length, t, angle_of_attack,label):
         """
         x_offset, y_offset: 翼弦前緣位置
         chord_length: 翼弦長度
@@ -48,8 +48,9 @@ class DomainManager:
                     0.2969 * np.sqrt(xc) - 0.1260 * xc - 
                     0.3516 * xc**2 + 0.2843 * xc**3 - 0.1015 * xc**4
                 )
-                if abs(dy) <= yt:
-                    self._mask_np[y, x] = 1
+                for i, j in self.grid_range:
+                    if is_inside_airfoil(i, j):
+                        self.obstacle_cpu[i, j] = label  # 標記為 1 或 2
 
     def clear_domain(self):
         self._mask_np.fill(0)

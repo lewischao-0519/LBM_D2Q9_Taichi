@@ -23,8 +23,8 @@ def main():
     
     # 📝 修正：給予明確的數值而非佔位符
     # 參數：(x位置, y位置, 弦長, 厚度t, 攻角)
-    domain.add_naca_airfoil(200, 400, 200, 0.12, -5.0)
-    domain.add_naca_airfoil(800, 350, 200, 0.12, -2.0)
+    domain.add_naca_airfoil(200, 400, 300, 0.12, -5.0,label=1)
+    domain.add_naca_airfoil(1300, 360, 400, 0.12, -2.0,label=2)
     domain.upload()
     
     # --- 科學數據記錄器 ---

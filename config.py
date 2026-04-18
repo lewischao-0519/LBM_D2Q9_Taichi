@@ -6,11 +6,11 @@ import taichi as ti
 ti.init(arch=ti.gpu, default_fp=ti.f32)   # f32 在 GPU 上比 f64 快約 2x
 
 # --- 物理與網格基本參數 ---
-NX       = 1500
-NY       = 600
-MAX_STEPS = 35000
-U_MAX    = 0.08
-RE       = 2000
+NX       = 4000
+NY       = 1200
+MAX_STEPS = 100000
+U_MAX    = 0.05
+RE       = 25000
 
 # --- LBM D2Q9 常數（保留 NumPy 版，供 from_numpy 初始化用）---
 CX_NP  = np.array([ 0, 1, 0,-1, 0, 1,-1,-1, 1], dtype=np.int32)
@@ -31,7 +31,7 @@ def init_constants():
     OPP.from_numpy(OPP_NP)
 
 # --- 鬆弛參數 ---
-L_char = 300
+L_char = 350
 nu     = (U_MAX * L_char) / RE
 tau    = 3.0 * nu + 0.5
 OMEGA  = float(1.0 / tau)
