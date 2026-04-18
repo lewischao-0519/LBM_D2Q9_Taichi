@@ -81,27 +81,27 @@ def main():
     try:
         if len(steps_log) > 0:
         # 創建一個 2x1 的佈局：上面看升力對比，下面看阻力對比
-        fig_data, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
-        
-        # --- 上圖：升力 (Lift) 對比 ---
-        ax1.plot(steps_log, front_lift, label='Front Wing (Target)', color='blue', linewidth=1.5)
-        ax1.plot(steps_log, rear_lift, label='Rear Wing (Tandem)', color='cyan', linestyle='--', linewidth=1.5)
-        ax1.set_ylabel('Lift Force (Lattice Units)')
-        ax1.set_title('Tandem Wing Aerodynamic Performance Comparison')
-        ax1.grid(True, linestyle='--', alpha=0.6)
-        ax1.legend(loc='upper right')
+            fig_data, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+            
+            # --- 上圖：升力 (Lift) 對比 ---
+            ax1.plot(steps_log, front_lift, label='Front Wing (Target)', color='blue', linewidth=1.5)
+            ax1.plot(steps_log, rear_lift, label='Rear Wing (Tandem)', color='cyan', linestyle='--', linewidth=1.5)
+            ax1.set_ylabel('Lift Force (Lattice Units)')
+            ax1.set_title('Tandem Wing Aerodynamic Performance Comparison')
+            ax1.grid(True, linestyle='--', alpha=0.6)
+            ax1.legend(loc='upper right')
 
-        # --- 下圖：阻力 (Drag) 對比 ---
-        ax2.plot(steps_log, front_drag, label='Front Wing Drag', color='red', linewidth=1.5)
-        ax2.plot(steps_log, rear_drag, label='Rear Wing Drag', color='orange', linestyle='--', linewidth=1.5)
-        ax2.set_xlabel('Time Steps')
-        ax2.set_ylabel('Drag Force (Lattice Units)')
-        ax2.grid(True, linestyle='--', alpha=0.6)
-        ax2.legend(loc='upper right')
+            # --- 下圖：阻力 (Drag) 對比 ---
+            ax2.plot(steps_log, front_drag, label='Front Wing Drag', color='red', linewidth=1.5)
+            ax2.plot(steps_log, rear_drag, label='Rear Wing Drag', color='orange', linestyle='--', linewidth=1.5)
+            ax2.set_xlabel('Time Steps')
+            ax2.set_ylabel('Drag Force (Lattice Units)')
+            ax2.grid(True, linestyle='--', alpha=0.6)
+            ax2.legend(loc='upper right')
 
-        plt.tight_layout()
-        plt.savefig("/kaggle/working/tandem_force_comparison.png", dpi=250)
-        print("✅ 雙翼對比圖已儲存至: tandem_force_comparison.png")
+            plt.tight_layout()
+            plt.savefig("/kaggle/working/tandem_force_comparison.png", dpi=250)
+            print("✅ 雙翼對比圖已儲存至: tandem_force_comparison.png")
 
     except Exception as e:
         print(f"❌ Failed to generate plot: {e}")
