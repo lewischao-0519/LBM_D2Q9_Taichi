@@ -1,8 +1,4 @@
-# engine.py  ── Taichi 版（核心遷移）
-#
-# 對應原版 Numba @njit(parallel=True) lbm_step()
-# 改為三個 @ti.kernel：lbm_step_kernel / set_inlet_kernel / get_macro_kernel
-#
+# engine.py  ── Taichi 版（修正版）
 import taichi as ti
 import numpy as np
 import config as cfg
@@ -15,42 +11,56 @@ f_new = ti.field(ti.f32, shape=(9, cfg.NY, cfg.NX))
 rho_field = ti.field(ti.f32, shape=(cfg.NY, cfg.NX))
 ux_field  = ti.field(ti.f32, shape=(cfg.NY, cfg.NX))
 uy_field  = ti.field(ti.f32, shape=(cfg.NY, cfg.NX))
-# engine.py 
 
-# 建立一個零維向量場來儲存總受力 (只有一個元素，存放 [Fx, Fy])
-# 在 engine.py 中新增或修改
-import taichi as ti
-
-# 準備兩個存放受力的場
+# ── 準備兩個存放受力的場 ──
 force_field_front = ti.Vector.field(2, dtype=ti.f32, shape=())
 force_field_rear = ti.Vector.field(2, dtype=ti.f32, shape=())
 
 @ti.kernel
 def compute_force_dual_kernel(obstacle: ti.template()):
+    """
+    修正版：使用動量交換法計算前後兩個機翼的受力
+    obstacle 值：0=流體, 1=前翼, 2=後翼
+    """
     # 每次計算前清零
-    force_field_front[None] = [0.0, 0.0]
-    force_field_rear[None] = [0.0, 0.0]
+    force_field_front[None] = ti.Vector([0.0, 0.0])
+    force_field_rear[None] = ti.Vector([0.0, 0.0])
     
-    for i, j in ti.ndrange(cfg.NX, cfg.NY):
+    # 注意：obstacle 是 [y, x] 順序
+    for j, i in ti.ndrange(cfg.NY, cfg.NX):  # j=y, i=x
+        obj_type = obstacle[j, i]
+        
         # 只有當該點是障礙物時才計算
-        obj_type = obstacle[i, j]
         if obj_type > 0:
             for k in range(9):
-                # 動量交換法 (Momentum Exchange Method)
-                ip = i + cfg.DX[k]
-                jp = j + cfg.DY[k]
-                if 0 <= ip < cfg.NX and 0 <= jp < cfg.NY:
-                    if obstacle[ip, jp] == 0: # 鄰居是流體
-                        # 這裡使用 D2Q9 的反向索引 (k_inv)
-                        k_inv = cfg.INV[k]
-                        momentum = cfg.W[k] * (f[i, j][k] + f_new[ip, jp][k_inv])
-                        
-                        force_vec = [momentum * cfg.DX[k], momentum * cfg.DY[k]]
-                        
-                        if obj_type == 1:
-                            force_field_front[None] += force_vec
-                        elif obj_type == 2:
-                            force_field_rear[None] += force_vec
+                # 計算鄰居座標（週期邊界）
+                ip = (i + cfg.CX[k] + cfg.NX) % cfg.NX
+                jp = (j + cfg.CY[k] + cfg.NY) % cfg.NY
+                
+                # 如果鄰居是流體（不是障礙物）
+                if obstacle[jp, ip] == 0:
+                    # 動量交換法：f(obstacle->fluid) - f(fluid->obstacle)
+                    k_opp = cfg.OPP[k]
+                    
+                    # 障礙物點向流體方向的分佈函數
+                    f_out = f[k, j, i]
+                    # 流體點向障礙物方向的分佈函數
+                    f_in = f[k_opp, jp, ip]
+                    
+                    # 動量交換
+                    momentum = f_out + f_in
+                    
+                    # 力 = 動量 × 方向向量
+                    force_x = momentum * ti.cast(cfg.CX[k], ti.f32)
+                    force_y = momentum * ti.cast(cfg.CY[k], ti.f32)
+                    
+                    # 根據障礙物類型累加到對應的力場
+                    if obj_type == 1:  # 前翼
+                        ti.atomic_add(force_field_front[None][0], force_x)
+                        ti.atomic_add(force_field_front[None][1], force_y)
+                    elif obj_type == 2:  # 後翼
+                        ti.atomic_add(force_field_rear[None][0], force_x)
+                        ti.atomic_add(force_field_rear[None][1], force_y)
 
 
 @ti.kernel
@@ -60,15 +70,13 @@ def lbm_step_kernel(obstacle: ti.template(), omega: float):
       - Pull-scheme 串流
       - 碰撞（BGK / Loop Fusion）
       - Bounce-back 反彈
-    Taichi 對 for y, x in ... 自動並行，不需要 prange。
     """
     for y, x in rho_field:          # 自動並行所有 (y, x)
 
-        # ── Bounce-back（障礙物）──
-        if obstacle[y, x] == 1:
+        # ── Bounce-back（障礙物，包括前翼和後翼）──
+        if obstacle[y, x] > 0:  # 修正：任何非零值都是障礙物
             for i in ti.static(range(9)):
                 f_new[i, y, x] = f[cfg.OPP[i], y, x]
-            # 注意：Taichi kernel 裡不能 continue，用 else 繞過
         else:
             # ── Pull-scheme 串流 ──
             f_local = ti.Vector([0.0] * 9)
@@ -129,7 +137,7 @@ def compute_macro_kernel(obstacle: ti.template()):
     障礙物內部速度設為 0。
     """
     for y, x in rho_field:
-        if obstacle[y, x] == 1:
+        if obstacle[y, x] > 0:  # 修正：任何非零值都是障礙物
             ux_field[y, x]  = 0.0
             uy_field[y, x]  = 0.0
             rho_field[y, x] = 1.0
@@ -149,12 +157,6 @@ def compute_macro_kernel(obstacle: ti.template()):
 
 def init_fields():
     """初始化 f / f_new 為均勻流場（等價於原版 init_simulation 的 f 部分）"""
-    for i in range(9):
-        val = float(cfg.W_NP[i])
-        # 用 numpy 批次填入
-        arr = np.full((cfg.NY, cfg.NX), val, dtype=np.float32)
-        f.from_numpy(f.to_numpy())          # 確保 shape 一致
-    # 更直接的寫法：
     f_np = np.zeros((9, cfg.NY, cfg.NX), dtype=np.float32)
     for i in range(9):
         f_np[i] = cfg.W_NP[i]

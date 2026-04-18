@@ -1,4 +1,4 @@
-# config.py  ── Taichi 版（幾乎不變，加 ti.init）
+# config.py  ── Taichi 版（修正版）
 import numpy as np
 import taichi as ti
 
