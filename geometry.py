@@ -63,7 +63,7 @@ class DomainManager:
         for i in range(x_start, x_end):
             for j in range(y_start, y_end):
                 if is_inside_airfoil(i, j):
-                    self.obstacle_cpu[i, j] = label # 使用傳入的 label (1 或 2)
+                    self.obstacle[i, j] = label # 使用傳入的 label (1 或 2)
 
     def clear_domain(self):
         self._mask_np.fill(0)
